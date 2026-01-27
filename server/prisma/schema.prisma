@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PUBLIC
+  GOV_EMPLOYEE
+  ADMIN
+  AUDITOR
+}
+
+enum EventType {
+  PROJECT_CREATED
+  PROGRESS_UPDATE
+  MILESTONE_ACHIEVED
+  DELAY_REPORTED
+  COMPLETION_DECLARED
+  DOCUMENT_UPLOADED
+  CORRECTION
+}
+
+enum ProjectStatus {
+  SANCTIONED
+  IN_PROGRESS
+  DELAYED
+  COMPLETED
+  HALTED
+}
+
+enum ComplaintStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RESPONDED
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(PUBLIC)
+  department    String?
+  verified      Boolean   @default(false)
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  projectsCreated Project[]
+  eventsCreated   EventLedger[]
+  complaints      Complaint[] @relation("SubmittedBy")
+  complaintResponses Complaint[] @relation("RespondedBy") // Simplified for now, or separate model
+  documents       Document[]
+  auditLogs       AuditLog[]
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  projectName     String
+  department      String
+  budget          Decimal       @db.Decimal(15, 2)
+  state           String
+  district        String
+  latitude        Decimal       @db.Decimal(10, 8)
+  longitude       Decimal       @db.Decimal(11, 8)
+  startDate       DateTime      @db.Date
+  expectedEndDate DateTime      @db.Date
+  currentStatus   ProjectStatus @default(SANCTIONED)
+  currentProgress Int           @default(0)
+  createdBy       String
+  createdAt       DateTime      @default(now())
+
+  creator         User          @relation(fields: [createdBy], references: [id])
+  events          EventLedger[]
+  complaints      Complaint[]
+  documents       Document[]
+}
+
+model EventLedger {
+  id           String    @id @default(uuid())
+  projectId    String
+  eventType    EventType
+  eventData    Json
+  previousHash String
+  currentHash  String
+  createdBy    String
+  createdAt    DateTime  @default(now())
+
+  project      Project   @relation(fields: [projectId], references: [id])
+  creator      User      @relation(fields: [createdBy], references: [id])
+
+  @@index([currentHash])
+}
+
+model Complaint {
+  id            String          @id @default(uuid())
+  projectId     String
+  complaintType String
+  description   String
+  status        ComplaintStatus @default(SUBMITTED)
+  evidenceUrl   String?
+  submittedBy   String
+  createdAt     DateTime        @default(now())
+  
+  // Response fields
+  response      String?
+  respondedBy   String?
+  respondedAt   DateTime?
+
+  project       Project   @relation(fields: [projectId], references: [id])
+  submitter     User      @relation("SubmittedBy", fields: [submittedBy], references: [id])
+  responder     User?     @relation("RespondedBy", fields: [respondedBy], references: [id])
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  projectId  String?
+  fileUrl    String
+  fileHash   String
+  fileSize   BigInt
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+  project    Project? @relation(fields: [projectId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  actionType String
+  targetId   String?
+  metadata   Json?
+  hash       String? // Optional integrity check for audit logs
+  createdAt  DateTime @default(now())
+
+  actor      User     @relation(fields: [actorId], references: [id])
+}
