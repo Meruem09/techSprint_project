@@ -104,7 +104,8 @@ export default function ProjectDetailsPage() {
                 setEvidenceFile(null);
             } else {
                 const errData = await res.json();
-                alert(`Failed: ${errData.message || 'Unknown error'}`);
+                const errorMessage = errData.errors || errData.message || 'Unknown error';
+                alert(`Failed: ${errorMessage}`);
             }
         } catch (error) {
             console.error(error);
@@ -165,7 +166,8 @@ export default function ProjectDetailsPage() {
                                     rows={4}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Describe the issue in detail..."
+                                    placeholder="Describe the issue in detail (min 10 chars)..."
+                                    minLength={10}
                                     required
                                 />
                             </div>
@@ -200,23 +202,23 @@ export default function ProjectDetailsPage() {
             <div>
                 <h2 className="text-2xl font-bold mb-4">Project Timeline (Immutable Ledger)</h2>
                 {/* Timeline rendering same as before */}
-                <div className="relative border-l-2 border-muted ml-3 space-y-8 pb-8">
+                <div className="relative border-l border-border/50 ml-3 space-y-8 pb-8">
                     {timeline.map((event) => (
-                        <div key={event.id} className="relative pl-8">
-                            <span className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-primary border-4 border-background" />
+                        <div key={event.id} className="relative pl-8 group">
+                            <span className="absolute -left-[5px] top-2 h-2.5 w-2.5 rounded-full bg-background border-2 border-muted-foreground group-hover:border-primary group-hover:scale-125 transition-all" />
                             <div className="flex flex-col gap-2">
                                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                    <h3 className="font-semibold">{event.eventType}</h3>
-                                    <span className="text-sm text-muted-foreground">{new Date(event.timestamp).toLocaleString()}</span>
+                                    <h3 className="font-medium text-foreground">{event.eventType.replace(/_/g, ' ')}</h3>
+                                    <span className="text-xs text-muted-foreground tabular-nums">{new Date(event.timestamp).toLocaleString()}</span>
                                 </div>
-                                <div className="p-3 bg-muted/50 rounded-md text-sm">
+                                <div className="p-4 bg-card rounded-lg border border-border/50 shadow-sm text-sm group-hover:border-primary/20 transition-colors">
                                     {event.eventType === 'PROJECT_CREATED' && event.data && (
-                                        <p>Project sanctioned with budget ₹{event.data.budget}</p>
+                                        <p className="text-muted-foreground">Project sanctioned with budget <span className="font-medium text-foreground">₹{event.data.budget}</span></p>
                                     )}
                                     {event.eventType === 'PROGRESS_UPDATE' && event.data && (
-                                        <p>Progress reported: {event.data.progress}%</p>
+                                        <p className="text-muted-foreground">Progress reported: <span className="font-medium text-foreground">{event.data.progress}%</span></p>
                                     )}
-                                    <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs font-mono text-gray-500 break-all">
+                                    <div className="mt-3 pt-3 border-t border-border/30 text-[10px] font-mono text-muted-foreground break-all opacity-70">
                                         Hash: {event.currentHash}
                                     </div>
                                 </div>
@@ -225,6 +227,105 @@ export default function ProjectDetailsPage() {
                     ))}
                 </div>
             </div>
+
+            <div className="pt-8 border-t border-border/50">
+                <h2 className="text-2xl font-bold mb-6">Citizen Complaints & Feedback</h2>
+                <ComplaintsList projectId={id!} />
+            </div>
+        </div>
+    );
+}
+
+function ComplaintsList({ projectId }: { projectId: string }) {
+    const { user, token } = useAuth();
+    const [complaints, setComplaints] = useState<any[]>([]);
+    const [respondingTo, setRespondingTo] = useState<string | null>(null);
+    const [responseText, setResponseText] = useState('');
+
+    useEffect(() => {
+        const fetchComplaints = async () => {
+            try {
+                const res = await fetch(`http://localhost:3001/complaints?projectId=${projectId}`);
+                if (res.ok) setComplaints(await res.json());
+            } catch (err) { console.error(err); }
+        };
+        fetchComplaints();
+    }, [projectId]);
+
+    const handleResolve = async (complaintId: string) => {
+        if (!responseText) return alert('Please enter a response');
+        try {
+            const res = await fetch(`http://localhost:3001/complaints/${complaintId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ status: 'RESOLVED', response: responseText })
+            });
+            if (res.ok) {
+                setComplaints(complaints.map(c => c.id === complaintId ? { ...c, status: 'RESOLVED', response: responseText, respondedAt: new Date() } : c));
+                setRespondingTo(null);
+                setResponseText('');
+            }
+        } catch (err) { alert('Failed to resolve'); }
+    }
+
+    if (complaints.length === 0) return <div className="text-muted-foreground italic">No complaints filed for this project.</div>;
+
+    return (
+        <div className="grid gap-6">
+            {complaints.map(c => (
+                <div key={c.id} className="p-6 rounded-xl border border-border/60 bg-card shadow-sm">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                {c.status}
+                            </span>
+                            <span className="text-sm font-medium text-muted-foreground">{c.complaintType}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    <p className="mb-4 text-foreground/90 leading-relaxed">{c.description}</p>
+                    {c.evidenceUrl && (
+                        <a href={c.evidenceUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline mb-4 block">
+                            View Attached Evidence 📎
+                        </a>
+                    )}
+
+                    {c.response && (
+                        <div className="mt-4 p-4 bg-secondary/30 rounded-lg border border-border/50">
+                            <p className="text-sm font-semibold mb-1">Official Response:</p>
+                            <p className="text-sm text-foreground/80">{c.response}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                - {new Date(c.respondedAt).toLocaleDateString()}
+                            </p>
+                        </div>
+                    )}
+
+                    {!c.response && ['GOV_EMPLOYEE', 'ADMIN'].includes(user?.role || '') && (
+                        <div className="mt-4 pt-4 border-t border-border/40">
+                            {respondingTo === c.id ? (
+                                <div className="space-y-3">
+                                    <textarea
+                                        className="w-full p-2 text-sm border rounded-md bg-background"
+                                        placeholder="Write public response..."
+                                        value={responseText}
+                                        onChange={e => setResponseText(e.target.value)}
+                                    />
+                                    <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => handleResolve(c.id)}>Submit Resolution</Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setRespondingTo(null)}>Cancel</Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Button size="sm" variant="outline" onClick={() => setRespondingTo(c.id)}>
+                                    Respond & Resolve
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

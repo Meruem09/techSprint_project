@@ -3,20 +3,41 @@ import { Button } from "@/components/ui/button"
 
 export default function LandingPage() {
     return (
-        <div className="flex flex-col items-center justify-center space-y-10 py-20 text-center">
-            <h1 className="text-5xl font-extrabold tracking-tight lg:text-6xl">
-                Transparency in <span className="text-primary">Government Projects</span>
-            </h1>
-            <p className="max-w-[700px] text-lg text-muted-foreground">
-                A tamper-proof, public accountability platform ensuring every government scheme update is permanent and visible to citizens.
-            </p>
-            <div className="flex gap-4">
+        <div className="flex flex-col items-center justify-center space-y-8 py-32 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="space-y-4">
+                <h1 className="text-4xl font-bold tracking-tight sm:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
+                    Transparency in <br /> Government Projects
+                </h1>
+                <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl leading-relaxed">
+                    A tamper-proof ledger ensuring every government scheme update is permanent, visible, and accountable to every citizen.
+                </p>
+            </div>
+            <div className="flex gap-4 pt-4">
                 <Link to="/projects">
-                    <Button size="lg">View Public Projects</Button>
+                    <Button size="lg" className="h-12 px-8 text-lg rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
+                        Explore Projects
+                    </Button>
                 </Link>
-                <Link to="/register">
-                    <Button variant="outline" size="lg">Official Sign Up</Button>
+                <Link to="/login">
+                    <Button variant="outline" size="lg" className="h-12 px-8 text-lg rounded-full border-border/50 hover:bg-secondary/50">
+                        Official Access
+                    </Button>
                 </Link>
+            </div>
+
+            <div className="pt-16 grid grid-cols-3 gap-8 text-center">
+                <div>
+                    <div className="text-3xl font-bold">100%</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Transparency</div>
+                </div>
+                <div>
+                    <div className="text-3xl font-bold">Immutable</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Ledger</div>
+                </div>
+                <div>
+                    <div className="text-3xl font-bold">Open</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Access</div>
+                </div>
             </div>
         </div>
     );
