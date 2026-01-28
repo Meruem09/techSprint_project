@@ -6,8 +6,10 @@ export default function SignupPage() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        password: ''
+        password: '',
+        department: ''
     });
+    const [isGovEmployee, setIsGovEmployee] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -22,10 +24,15 @@ export default function SignupPage() {
         setLoading(true);
 
         try {
+            // Only include department if user is registering as gov employee
+            const registrationData = isGovEmployee
+                ? formData
+                : { name: formData.name, email: formData.email, password: formData.password };
+
             const response = await fetch('http://localhost:3001/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(registrationData),
             });
 
             const data = await response.json();
@@ -90,6 +97,39 @@ export default function SignupPage() {
                             required
                         />
                     </div>
+
+                    <div className="space-y-3 border-t pt-4">
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="isGovEmployee"
+                                checked={isGovEmployee}
+                                onChange={(e) => setIsGovEmployee(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300"
+                            />
+                            <label htmlFor="isGovEmployee" className="text-sm font-medium">
+                                I am a Government Employee
+                            </label>
+                        </div>
+
+                        {isGovEmployee && (
+                            <div className="space-y-2 pl-6">
+                                <label className="text-sm font-medium">Department *</label>
+                                <input
+                                    name="department"
+                                    value={formData.department}
+                                    onChange={handleChange}
+                                    placeholder="e.g., Public Works, Health, Education"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    required={isGovEmployee}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Government employees can create and manage projects
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     <Button type="submit" className="w-full" disabled={loading}>
                         {loading ? 'Creating Account...' : 'Sign Up'}
                     </Button>

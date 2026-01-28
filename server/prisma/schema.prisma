@@ -38,6 +38,7 @@ model Project {
   projectName     String
   department      String
   budget          Decimal
+  budgetSpent     Decimal   @default(0)
   state           String
   district        String
   latitude        Decimal

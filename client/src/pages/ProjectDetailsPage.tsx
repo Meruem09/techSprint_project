@@ -36,27 +36,59 @@ export default function ProjectDetailsPage() {
     // Event Form State
     const [showEventForm, setShowEventForm] = useState(false);
     const [progressInput, setProgressInput] = useState('');
+    const [budgetSpentInput, setBudgetSpentInput] = useState('');
+    const [descriptionInput, setDescriptionInput] = useState('');
+    const [evidenceImage, setEvidenceImage] = useState<File | null>(null);
 
     const handleEventSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setUploading(true);
         try {
+            let evidenceUrl = '';
+
+            // Upload image if provided
+            if (evidenceImage) {
+                const formData = new FormData();
+                formData.append('file', evidenceImage);
+
+                const uploadRes = await fetch('http://localhost:3001/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    evidenceUrl = uploadData.url;
+                }
+            }
+
+            // Submit event with all fields
             const res = await fetch(`http://localhost:3001/projects/${id}/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
                     eventType: 'PROGRESS_UPDATE',
-                    data: { progress: parseInt(progressInput) }
+                    data: {
+                        progress: parseInt(progressInput),
+                        budgetSpent: parseFloat(budgetSpentInput || '0'),
+                        description: descriptionInput,
+                        evidenceUrl
+                    }
                 })
             });
 
             if (res.ok) {
-                alert('Ledger updated successfully!');
+                alert('Update committed to ledger!');
                 setShowEventForm(false);
                 setProgressInput('');
-                window.location.reload(); // Quick refresh to see new hash
+                setBudgetSpentInput('');
+                setDescriptionInput('');
+                setEvidenceImage(null);
+                window.location.reload();
             } else {
-                alert('Failed to update ledger');
+                const errData = await res.json();
+                alert(`Failed: ${errData.message || 'Unknown error'}`);
             }
         } catch (err) {
             console.error(err);
@@ -222,8 +254,18 @@ export default function ProjectDetailsPage() {
 
                 <div className="grid gap-4 md:grid-cols-4">
                     <div className="p-4 border rounded-lg">
-                        <div className="text-sm text-muted-foreground">Budget</div>
+                        <div className="text-sm text-muted-foreground">Total Budget</div>
                         <div className="text-xl font-bold">₹{project.budget}</div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Budget Spent</div>
+                        <div className="text-xl font-bold text-red-600">₹{project.budgetSpent || 0}</div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Budget Remaining</div>
+                        <div className="text-xl font-bold text-green-600">
+                            ₹{((project.budget || 0) - (project.budgetSpent || 0)).toFixed(2)}
+                        </div>
                     </div>
                     <div className="p-4 border rounded-lg">
                         <div className="text-sm text-muted-foreground">Status</div>
@@ -250,13 +292,13 @@ export default function ProjectDetailsPage() {
                                 <label className="block text-sm font-medium mb-1">Event Type</label>
                                 <select
                                     className="w-full p-2 border rounded-md"
-                                    disabled // For now, only progress updates
+                                    disabled
                                 >
                                     <option>PROGRESS_UPDATE</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">New Progress (%)</label>
+                                <label className="block text-sm font-medium mb-1">Progress Increment (%)</label>
                                 <input
                                     type="number"
                                     min="0"
@@ -266,9 +308,54 @@ export default function ProjectDetailsPage() {
                                     onChange={(e) => setProgressInput(e.target.value)}
                                     required
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Current: {project.currentProgress}% → Will become: {Math.min(100, project.currentProgress + parseInt(progressInput || '0'))}%
+                                </p>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Budget Spent (₹)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={budgetSpentInput}
+                                    onChange={(e) => setBudgetSpentInput(e.target.value)}
+                                    className="w-full p-2 border rounded-md"
+                                    placeholder="Amount spent in this update"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Remaining: ₹{((project.budget || 0) - (project.budgetSpent || 0)).toFixed(2)}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Description *</label>
+                                <textarea
+                                    rows={3}
+                                    value={descriptionInput}
+                                    onChange={(e) => setDescriptionInput(e.target.value)}
+                                    className="w-full p-2 border rounded-md"
+                                    placeholder="Describe the work completed in this update..."
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Evidence (Image)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setEvidenceImage(e.target.files?.[0] || null)}
+                                    className="w-full p-2 border rounded-md"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Upload photo evidence of completed work (optional)
+                                </p>
+                            </div>
+
                             <Button type="submit" disabled={uploading}>
-                                {uploading ? 'Writing to Ledger...' : 'Commit Immutable Update'}
+                                {uploading ? 'Uploading...' : 'Commit Update to Ledger'}
                             </Button>
                         </form>
                     </div>
@@ -289,7 +376,31 @@ export default function ProjectDetailsPage() {
                                         <p className="text-muted-foreground">Project sanctioned with budget <span className="font-medium text-foreground">₹{event.data.budget}</span></p>
                                     )}
                                     {event.eventType === 'PROGRESS_UPDATE' && event.data && (
-                                        <p className="text-muted-foreground">Progress reported: <span className="font-medium text-foreground">{event.data.progress}%</span></p>
+                                        <div className="space-y-2">
+                                            <p className="text-muted-foreground">
+                                                Progress: <span className="font-medium text-foreground">{event.data.progress}%</span>
+                                            </p>
+                                            {event.data.budgetSpent > 0 && (
+                                                <p className="text-muted-foreground">
+                                                    Budget Spent: <span className="font-medium text-red-600">₹{event.data.budgetSpent}</span>
+                                                </p>
+                                            )}
+                                            {event.data.description && (
+                                                <p className="text-sm text-foreground/80 mt-2 border-l-2 border-primary/30 pl-3">
+                                                    {event.data.description}
+                                                </p>
+                                            )}
+                                            {event.data.evidenceUrl && (
+                                                <div className="mt-3">
+                                                    <img
+                                                        src={`http://localhost:3001${event.data.evidenceUrl}`}
+                                                        alt="Evidence"
+                                                        className="rounded-lg max-w-md border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                                        onClick={() => window.open(`http://localhost:3001${event.data.evidenceUrl}`, '_blank')}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                     <div className="mt-3 pt-3 border-t border-border/30 text-[10px] font-mono text-muted-foreground break-all opacity-70">
                                         Hash: {event.currentHash}

@@ -77,6 +77,7 @@ export const addEvent = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const { eventType, data } = req.body;
+        // data now includes: { progress, budgetSpent, description, evidenceUrl }
         // @ts-ignore
         const userId = req.user?.userId || 'admin-123';
 
@@ -88,16 +89,38 @@ export const addEvent = async (req: Request, res: Response) => {
 
         // Update project status if needed
         if (eventType === 'PROGRESS_UPDATE' && data.progress) {
-            // Add the progress increment to current progress
+            // Calculate new progress (incremental)
             const newProgress = Math.min(100, project.currentProgress + data.progress);
+
+            // Calculate new budget spent (cumulative)
+            const budgetIncrement = parseFloat(data.budgetSpent || '0');
+            const newBudgetSpent = parseFloat(project.budgetSpent.toString()) + budgetIncrement;
+
+            // Validate budget doesn't exceed total
+            if (newBudgetSpent > parseFloat(project.budget.toString())) {
+                return res.status(400).json({
+                    message: 'Budget exceeded!',
+                    details: {
+                        totalBudget: project.budget,
+                        currentSpent: project.budgetSpent,
+                        attemptedSpend: budgetIncrement,
+                        wouldBeTotal: newBudgetSpent
+                    }
+                });
+            }
+
             await prisma.project.update({
                 where: { id },
-                data: { currentProgress: newProgress }
+                data: {
+                    currentProgress: newProgress,
+                    budgetSpent: newBudgetSpent
+                }
             });
         }
 
         res.status(201).json({ message: 'Event added', event });
     } catch (error) {
+        console.error('Add Event Error:', error);
         res.status(500).json({ message: 'Error adding event', error });
     }
 };
