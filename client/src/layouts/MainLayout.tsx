@@ -50,8 +50,45 @@ export default function MainLayout() {
             <main className="container py-6 px-4">
                 <Outlet />
             </main>
-            <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-                © 2026 Government Project Transparency Platform
+            <footer className="border-t bg-muted/30">
+                <div className="container py-12 px-4 grid gap-8 md:grid-cols-4">
+                    <div className="space-y-4">
+                        <Link to="/" className="text-xl font-bold text-primary">
+                            GovTransparency
+                        </Link>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            Empowering citizens with real-time tracking of government projects.
+                            Building trust through immutable records.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-4">Platform</h4>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                            <li><Link to="/projects" className="hover:text-primary">Explore Projects</Link></li>
+                            <li><Link to="/login" className="hover:text-primary">Official Login</Link></li>
+                            <li><Link to="#" className="hover:text-primary">Open Data API</Link></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-4">Legal</h4>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                            <li><Link to="#" className="hover:text-primary">Privacy Policy</Link></li>
+                            <li><Link to="#" className="hover:text-primary">Terms of Service</Link></li>
+                            <li><Link to="#" className="hover:text-primary">Accessibility</Link></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-4">Contact</h4>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                            <p>Ministry of Public Works</p>
+                            <p>New Delhi, India</p>
+                            <p>support@gov-transparency.in</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="border-t py-6 text-center text-sm text-muted-foreground">
+                    © 2026 Government Project Transparency Platform. All rights reserved.
+                </div>
             </footer>
         </div>
     );
