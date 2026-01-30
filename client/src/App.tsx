@@ -6,7 +6,6 @@ import ProjectDetailsPage from './pages/ProjectDetailsPage';
 import GovDashboard from './pages/GovDashboard';
 import { AuthProvider } from './context/AuthContext';
 import AuthPage from './pages/LoginPage';
-import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
 
