@@ -2,16 +2,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 
-interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    department?: string;
-    verified: boolean;
-    createdAt: string;
-}
-
 export default function AdminDashboard() {
     const { token, user } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
